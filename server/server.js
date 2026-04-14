@@ -66,3 +66,4 @@ server.on('error', (e) => {
     process.exit(1);
   }
 });
+module.exports = app;
