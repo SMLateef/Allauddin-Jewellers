@@ -11,9 +11,9 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 
-// 1. Enhanced Middleware (Fixes 403/CORS issues)
+// 1. UPDATED CORS: Allow both local testing and your live Vercel domain
 app.use(cors({
-  origin: "http://localhost:5173", // Allow your React frontend
+  origin: ["http://localhost:5173", "https://allauddin-jewellers.vercel.app"], 
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 })); 
@@ -24,7 +24,7 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("💎 CONNECTED: Allauddin Cloud Vault is Live"))
   .catch(err => {
     console.error("❌ CONNECTION ERROR:", err);
-    process.exit(1); 
+    // On Vercel, we don't necessarily want to process.exit(1) as it's a serverless function
   });
 
 // 3. API Routes
@@ -37,8 +37,7 @@ app.use('/api/auth', authRoutes);
 app.get('/api/status', (req, res) => {
   res.json({ 
     status: "Online", 
-    vault: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected",
-    port: process.env.PORT || 5050
+    vault: mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
   });
 });
 
@@ -46,24 +45,18 @@ app.get('/api/status', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ 
-    error: 'Something went wrong in the Vault!',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    error: 'Something went wrong in the Vault!'
   });
 });
 
-// 6. Server Initialization
-const PORT = process.env.PORT || 5050; 
+// 6. Conditional Server Initialization
+// This keeps it working locally, but avoids errors on Vercel
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5050; 
+  app.listen(PORT, () => {
+    console.log(`🚀 Local Vault Server active on http://localhost:${PORT}`);
+  });
+}
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Vault Server active on http://localhost:${PORT}`);
-});
-
-// Catch Port 5050 conflicts (Common on macOS)
-server.on('error', (e) => {
-  if (e.code === 'EADDRINUSE') {
-    console.error(`❌ ERROR: Port ${PORT} is already in use.`);
-    console.error(`👉 TIP: On macOS, go to System Settings > General > AirDrop & Handoff and turn OFF 'AirPlay Receiver'.`);
-    process.exit(1);
-  }
-});
+// CRITICAL: Export for Vercel Serverless Functions
 module.exports = app;
