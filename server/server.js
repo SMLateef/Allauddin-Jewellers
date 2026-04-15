@@ -19,22 +19,20 @@ app.use(cors({
 })); 
 app.use(express.json()); 
 
-// 2. Optimized MongoDB Connection for Serverless
+// 2. Optimized MongoDB Connection (Cleaned for Node 22+)
 const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) return;
 
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // REMOVED: useNewUrlParser and useUnifiedTopology (No longer supported in modern drivers)
+    await mongoose.connect(process.env.MONGO_URI);
     console.log("💎 CONNECTED: Allauddin Cloud Vault is Live");
   } catch (err) {
     console.error("❌ CONNECTION ERROR:", err.message);
   }
 };
 
-// Initialize connection immediately
+// Initialize connection
 connectDB();
 
 // 3. API Routes
@@ -43,9 +41,8 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/auth', authRoutes);
 
-// 4. Health Check (Now triggers a connection check)
+// 4. Health Check
 app.get('/api/status', async (req, res) => {
-  // Ensure we are connected before responding
   await connectDB();
   
   const state = mongoose.connection.readyState;
@@ -58,8 +55,7 @@ app.get('/api/status', async (req, res) => {
 
   res.json({ 
     status: "Online", 
-    vault: statusMap[state] || "Unknown State",
-    dbName: mongoose.connection.name 
+    vault: statusMap[state] || "Unknown State"
   });
 });
 
